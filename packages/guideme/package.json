@@ -1,0 +1,19 @@
+{
+  "name": "guideme",
+  "version": "1.0.0",
+  "description": "A lightweight library for feature tours",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "tour",
+    "guide",
+    "onboarding"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "vite": "^5.4.21"
+  }
+}
