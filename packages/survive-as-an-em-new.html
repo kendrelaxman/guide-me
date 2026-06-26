@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Survive as an EM</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0E1424;
+    --panel:#161E32;
+    --panel-2:#1D2740;
+    --line:#2A3654;
+    --amber:#F4A93C;
+    --green:#3DD68C;
+    --red:#FF5C5C;
+    --cream:#EDE9E0;
+    --muted:#8A93A8;
+    --shadow:0 24px 60px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:'Inter',system-ui,sans-serif;
+    background:
+      radial-gradient(1200px 700px at 50% -10%, rgba(244,169,60,.10), transparent 60%),
+      linear-gradient(180deg,#0E1424 0%,#0A0F1C 100%);
+    color:var(--cream);
+    min-height:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+    overflow-x:hidden;
+  }
+  /* faint grid for cockpit feel */
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;
+    background-image:
+      linear-gradient(rgba(255,255,255,.022) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(255,255,255,.022) 1px,transparent 1px);
+    background-size:44px 44px;
+    mask-image:radial-gradient(900px 600px at 50% 30%, #000 30%, transparent 80%);
+  }
+  .stage{width:min(900px,100%);position:relative;z-index:1}
+
+  /* ---- Status bar ---- */
+  .status{
+    display:flex;align-items:center;gap:18px;
+    background:linear-gradient(180deg,var(--panel),var(--panel-2));
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:14px 18px;
+    margin-bottom:18px;
+    box-shadow:var(--shadow);
+  }
+  .brand{display:flex;align-items:center;gap:11px;white-space:nowrap}
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--amber);box-shadow:0 0 14px var(--amber);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+  .brand b{font-family:'Space Grotesk',sans-serif;font-weight:700;letter-spacing:.06em;font-size:15px}
+  .brand span{font-family:'Space Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.1em}
+
+  .gauge-wrap{flex:1;min-width:120px}
+  .gauge-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+  .gauge-top label{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.18em;color:var(--muted)}
+  .gauge-top .val{font-family:'Space Mono',monospace;font-weight:700;font-size:15px;color:var(--green);transition:color .3s}
+  .gauge{height:11px;border-radius:8px;background:#0B1120;border:1px solid var(--line);overflow:hidden;position:relative}
+  .gauge-fill{height:100%;width:100%;border-radius:8px;
+    background:linear-gradient(90deg,var(--green),#7BE3B6);
+    transition:width .7s cubic-bezier(.2,.8,.2,1),background .4s}
+  .counter{font-family:'Space Mono',monospace;font-size:13px;color:var(--muted);white-space:nowrap;letter-spacing:.06em}
+  .counter b{color:var(--cream)}
+
+  /* ---- Card ---- */
+  .card{
+    background:linear-gradient(180deg,var(--panel),#121A2C);
+    border:1px solid var(--line);
+    border-radius:22px;
+    padding:34px 38px;
+    box-shadow:var(--shadow);
+    position:relative;
+    overflow:hidden;
+  }
+  .card::after{content:"";position:absolute;left:0;top:0;height:3px;width:100%;
+    background:linear-gradient(90deg,transparent,var(--amber),transparent);opacity:.7}
+
+  .eyebrow{font-family:'Space Mono',monospace;font-size:12px;letter-spacing:.22em;color:var(--amber);text-transform:uppercase;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+  .eyebrow .rule{height:1px;flex:1;background:linear-gradient(90deg,var(--amber),transparent);opacity:.5}
+
+  h1.q{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(24px,3.4vw,34px);line-height:1.12;letter-spacing:-.01em;margin-bottom:8px}
+  .sub{color:var(--muted);font-size:15px;margin-bottom:22px;max-width:62ch}
+
+  .options{display:grid;gap:11px}
+  .opt{
+    display:flex;align-items:center;gap:18px;
+    text-align:left;width:100%;
+    background:var(--panel-2);
+    border:1px solid var(--line);
+    color:var(--cream);
+    border-radius:14px;
+    padding:15px 20px;
+    font-family:'Inter',sans-serif;font-size:16px;font-weight:500;
+    cursor:pointer;transition:transform .12s,border-color .2s,background .2s;
+  }
+  .opt:hover:not(:disabled){border-color:var(--amber);transform:translateX(4px)}
+  .opt:disabled{cursor:default}
+  .opt .key{
+    font-family:'Space Mono',monospace;font-weight:700;font-size:18px;
+    width:40px;height:40px;flex:none;border-radius:10px;
+    display:grid;place-items:center;
+    background:#0B1120;border:1px solid var(--line);color:var(--amber);
+  }
+  .opt.correct{border-color:var(--green);background:rgba(61,214,140,.12)}
+  .opt.correct .key{background:var(--green);color:#06281A;border-color:var(--green)}
+  .opt.wrong{border-color:var(--red);background:rgba(255,92,92,.12)}
+  .opt.wrong .key{background:var(--red);color:#2E0A0A;border-color:var(--red)}
+  .opt.dim{opacity:.4}
+
+  /* ---- Verdict drawer ---- */
+  .verdict{margin-top:26px;border-radius:16px;padding:22px 24px;border:1px solid var(--line);
+    background:#0F1626;display:none;animation:rise .45s ease both}
+  .verdict.show{display:block}
+  @keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+  .verdict .tag{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:20px;letter-spacing:.02em;display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .verdict .tag.good{color:var(--green)}
+  .verdict .tag.bad{color:var(--red)}
+  .verdict p{color:#C7CEDD;font-size:15.5px;line-height:1.55}
+  .verdict p b{color:var(--cream)}
+
+  .next{
+    margin-top:22px;float:right;
+    font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:16px;
+    background:var(--amber);color:#241404;border:none;border-radius:12px;
+    padding:14px 26px;cursor:pointer;letter-spacing:.01em;
+    box-shadow:0 10px 24px rgba(244,169,60,.28);transition:transform .12s,filter .2s}
+  .next:hover{transform:translateY(-2px);filter:brightness(1.05)}
+  .clearfix::after{content:"";display:block;clear:both}
+
+  /* ---- Intro / End screens ---- */
+  .screen{text-align:center;padding:54px 40px}
+  .screen .eyebrow{justify-content:center}
+  .screen .eyebrow .rule{display:none}
+  .big{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(34px,6vw,60px);line-height:1.05;letter-spacing:-.02em;margin-bottom:18px}
+  .big .hl{color:var(--amber)}
+  .lede{color:#C2CAD9;font-size:18px;line-height:1.6;max-width:54ch;margin:0 auto 18px}
+  .drama{font-family:'Space Mono',monospace;color:var(--muted);font-size:14px;letter-spacing:.04em;margin-bottom:34px}
+  .start{
+    font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:19px;
+    background:linear-gradient(180deg,#FBC169,var(--amber));color:#241404;border:none;border-radius:14px;
+    padding:18px 44px;cursor:pointer;letter-spacing:.02em;
+    box-shadow:0 14px 34px rgba(244,169,60,.34);transition:transform .14s,filter .2s}
+  .start:hover{transform:translateY(-3px) scale(1.02);filter:brightness(1.04)}
+
+  .result-num{font-family:'Space Mono',monospace;font-weight:700;font-size:clamp(56px,11vw,96px);line-height:1;margin-bottom:6px}
+  .takeaway{
+    margin:30px auto 0;max-width:60ch;
+    background:linear-gradient(180deg,rgba(244,169,60,.10),transparent);
+    border:1px solid rgba(244,169,60,.35);border-radius:16px;padding:24px 26px}
+  .takeaway .k{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.2em;color:var(--amber);text-transform:uppercase;margin-bottom:10px}
+  .takeaway .t{font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:21px;line-height:1.35}
+
+  .hint{margin-top:22px;font-family:'Space Mono',monospace;font-size:11.5px;color:var(--muted);letter-spacing:.05em}
+  .shake{animation:shake .42s}
+  @keyframes shake{10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(4px)}30%,50%,70%{transform:translateX(-7px)}40%,60%{transform:translateX(7px)}}
+
+  @media (max-width:560px){
+    .card{padding:26px}
+    .status{flex-wrap:wrap;gap:12px}
+    .gauge-wrap{order:3;flex-basis:100%}
+    .opt{font-size:15.5px;padding:17px}
+    .screen{padding:38px 22px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{animation:none!important;transition:none!important}
+  }
+</style>
+</head>
+<body>
+<div class="stage">
+
+  <!-- STATUS BAR -->
+  <div class="status" id="statusBar" style="display:none">
+    <div class="brand"><span class="dot"></span><b>EM&nbsp;SURVIVAL</b><span>// LIVE</span></div>
+    <div class="gauge-wrap">
+      <div class="gauge-top"><label>MARGIN HEALTH</label><span class="val" id="marginVal">100%</span></div>
+      <div class="gauge"><div class="gauge-fill" id="gaugeFill"></div></div>
+    </div>
+    <div class="counter"><span id="segLabel">FINANCIAL MGMT</span> · Q<b id="counter">1</b>/<span id="segTotal">5</span></div>
+  </div>
+
+  <!-- MAIN CARD -->
+  <div class="card" id="card">
+    <!-- INTRO -->
+    <div class="screen" id="intro">
+      <div class="eyebrow">ENGAGEMENT MANAGER · FIELD TEST</div>
+      <h1 class="big">You are now the <span class="hl">EM</span>.</h1>
+      <p class="lede">The client is watching. The squad is counting on you. And your <b>margin</b> is on the line. Ten calls across two rounds — first the financials that run the engagement, then the margin that makes it worth doing.</p>
+      <p class="drama">&gt; Make the call that a good EM would make. Get it wrong, and your margin takes the hit.</p>
+      <button class="start" onclick="startGame()">Begin the shift →</button>
+      <div class="hint">Tip: press <b>A</b>–<b>D</b> to answer · <b>Enter</b> to advance</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const QUESTIONS = [
+  {
+    seg:0,
+    eyebrow:"Financials · bookings",
+    q:"Sales says you 'booked' a new deal this quarter. What does a booking actually represent?",
+    sub:"It isn't the same as cash — or as revenue.",
+    options:[
+      {t:"Cash received from the client", correct:false},
+      {t:"The signed, contracted value of new work won", correct:true},
+      {t:"The revenue you'll recognise this month", correct:false},
+      {t:"The value still sitting in the sales pipeline", correct:false}
+    ],
+    good:"A booking is the signed contract value of new work — order intake that adds to backlog. It's not cash (that's collections), not yet revenue (you earn that as you deliver), and not pipeline (still unsigned).",
+    bad:"Bookings are signed, contracted value (B). Cash is collections (A), revenue is earned as you deliver (C), and pipeline (D) isn't booked until it's signed."
+  },
+  {
+    seg:0,
+    eyebrow:"Financials · book-to-bill",
+    q:"Your book-to-bill ratio is sitting at 0.8. What is it telling you?",
+    sub:"Billings are steady; the backlog less so.",
+    options:[
+      {t:"You're winning more than you deliver — backlog is growing", correct:false},
+      {t:"You're billing faster than you're booking — backlog is shrinking", correct:true},
+      {t:"Your margins are improving", correct:false},
+      {t:"Nothing useful — it's a vanity metric", correct:false}
+    ],
+    good:"Book-to-bill = bookings ÷ billings. Below 1 means you're billing faster than you're winning new work, so the backlog — and future revenue — is shrinking. Above 1 means it's growing.",
+    bad:"0.8 is below 1, so you're billing more than you're booking (B) and backlog is shrinking. Growing backlog would be above 1 (A); it's a real forward-looking signal, not vanity (D)."
+  },
+  {
+    seg:0,
+    eyebrow:"Financials · revenue",
+    q:"You sign a $1.2m, 12-month deal in April. How much is revenue in April?",
+    sub:"The contract's signed; the work has barely started.",
+    options:[
+      {t:"The full $1.2m — it's signed", correct:false},
+      {t:"Only what you've earned by delivering in April", correct:true},
+      {t:"Whatever you invoiced in April", correct:false},
+      {t:"Nothing until the project finishes", correct:false}
+    ],
+    good:"Revenue is recognised as you earn it — as work is delivered — not when you sign (that's a booking) or when you invoice (that's billing). One month in, only April's delivered value is revenue.",
+    bad:"Signing is a booking (A); invoicing is billing (C); and you don't wait until the end (D). Revenue is earned as you deliver — only April's portion counts."
+  },
+  {
+    seg:0,
+    eyebrow:"Financials · CM & indirect cost",
+    q:"CM looks healthy, but the account's operating margin is thin. The usual culprit?",
+    sub:"Direct delivery costs are well under control.",
+    options:[
+      {t:"Indirect costs — the overheads sitting below the CM line", correct:true},
+      {t:"The client is simply underpaying", correct:false},
+      {t:"There's too much revenue", correct:false},
+      {t:"Bookings are running too high", correct:false}
+    ],
+    good:"CM = revenue − direct project costs. Indirect costs (overhead, management, shared services, SG&A) sit below the CM line. Strong CM but thin operating margin usually means indirect cost is eating the gap.",
+    bad:"Healthy CM with thin operating margin points to indirect costs (A) — the overheads below the CM line. It isn't revenue (C) or bookings (D), and rarely the client (B)."
+  },
+  {
+    seg:0,
+    eyebrow:"Financials · DVI",
+    q:"Your DVI has slipped for three sprints running. The right EM move?",
+    sub:"Every other report still looks green.",
+    options:[
+      {t:"Wait one more sprint for data before reacting", correct:false},
+      {t:"Ignore it — the RAG status is still green", correct:false},
+      {t:"Treat the trend as an early warning and dig into the cause now", correct:false},
+      {t:"C, and only re-baseline once you understand why", correct:true}
+    ],
+    good:"A leading indicator like DVI matters precisely because it moves before the RAG does. A three-sprint slide is a signal to investigate now — then adjust the baseline once you know the cause, not before.",
+    bad:"Waiting (A) or trusting green RAG (B) wastes the early warning. Act on the trend now (C), find the cause, and re-baseline only afterwards (D)."
+  },
+  {
+    seg:1,
+    eyebrow:"Protect margin · resource mix",
+    q:"You're budgeted for 1 senior + 3 juniors, but you've staffed 3 seniors + 1 junior. The result?",
+    sub:"The work's getting done. The numbers, less so.",
+    options:[
+      {t:"Same headcount, so the cost is the same", correct:false},
+      {t:"You're over-delivering — great for the client", correct:false},
+      {t:"You're burning margin — the blended rate is above plan", correct:true},
+      {t:"Fine, as long as the work gets done", correct:false}
+    ],
+    good:"Headcount isn't cost. Three seniors bill well above the planned blend, so the margin pays for the extra seniority. Rebalance the mix to the plan.",
+    bad:"It isn't about headcount (A, D) or client delight (B). A senior-heavy team blows your blended rate — and that gap comes straight out of margin."
+  },
+  {
+    seg:1,
+    eyebrow:"Grow CM · people & delivery",
+    q:"Margin's thin and the team is senior-heavy. The biggest lever you control?",
+    sub:"Everyone's billable — but the blended rate is what's hurting you.",
+    options:[
+      {t:"Add another senior so the work moves faster", correct:false},
+      {t:"Re-shape the pyramid — move fitting work to junior roles", correct:true},
+      {t:"Cut the team and push everyone harder", correct:false},
+      {t:"Ask the client for a rate increase", correct:false}
+    ],
+    good:"Right-shaping the seniority pyramid is the biggest rate-side lever you own. Put each task at the lowest-cost role that can do it well — don't over-staff with seniors.",
+    bad:"More seniority (A) raises cost; crunching a smaller team (C) burns people; a rate hike (D) is rarely yours to make. The lever you own is the seniority mix."
+  },
+  {
+    seg:1,
+    eyebrow:"Grow CM · global delivery mix",
+    q:"CM is under pressure on a delivery-heavy workstream. The strongest rate-side lever?",
+    sub:"The work is steady, well-understood, and not all of it needs to sit onshore.",
+    options:[
+      {t:"Keep everything onshore — it's simpler to manage", correct:false},
+      {t:"Shift suitable work offshore to cut the blended rate", correct:false},
+      {t:"Nearshore the time-zone-sensitive work, offshore the rest", correct:false},
+      {t:"B and C — right-shore each task to its cheapest viable location", correct:true}
+    ],
+    good:"Right-shoring is the biggest rate-side CM lever. Offshore the steady, well-defined work; nearshore what needs overlap; keep onshore only what truly must be local.",
+    bad:"Each option helps a little, but the real win is the blend (D): nearshore where you need time-zone overlap, offshore for the rest, onshore only where it must be."
+  },
+  {
+    seg:1,
+    eyebrow:"Grow CM · commercial model",
+    q:"What makes a Fixed Price 'Responsible' — and able to grow CM?",
+    sub:"The same scope can be priced two very different ways.",
+    options:[
+      {t:"It's simply priced higher to be safe", correct:false},
+      {t:"It transfers all the risk to the client", correct:false},
+      {t:"It's underpinned by proper estimation, governance and risk ownership", correct:false},
+      {t:"C — and because you own delivery, efficiency gains grow your CM", correct:true}
+    ],
+    good:"Responsible FP means you've estimated properly, you govern delivery, and you own the risk. Because you own delivery, every efficiency you create stays with you as margin. Non-responsible FP — bid blind, no governance — does the opposite and bleeds CM.",
+    bad:"A higher price (A) or dumping risk on the client (B) isn't what makes FP responsible. It's the estimation, governance and risk ownership (C) — and that discipline is exactly what lets you grow CM (D)."
+  },
+  {
+    seg:1,
+    eyebrow:"Final round · the free lunch",
+    q:"The client asks for extra work — with no extra budget. You…",
+    sub:"They're smiling. The relationship is warm. The ask is real.",
+    options:[
+      {t:"Just do it — keep the relationship glowing", correct:false},
+      {t:"Refuse flatly — it's not in scope", correct:false},
+      {t:"Raise a Change Request", correct:true},
+      {t:"Do a little now, raise a CR for the rest", correct:false}
+    ],
+    good:"Goodwill is great; free scope isn't. A Change Request protects your margin and sets a healthy expectation for every ask after this one. A token of goodwill on something trivial is fine — but real scope gets a CR.",
+    bad:"Saying yes for free (A) makes 'free' the baseline; a flat refusal (B) damages the relationship. The clean move is a Change Request (C). Why not D? Undocumented 'little extras' are exactly how scope quietly creeps."
+  }
+];
+
+const SEG = [
+  { title:"Financial Management", short:"FINANCIAL MGMT",
+    intro:"Five calls on the numbers that run an engagement — what you book, bill, earn and absorb in cost.",
+    sub:"Bookings · Book-to-Bill · Revenue · CM · Indirect Cost · DVI" },
+  { title:"Margin", short:"MARGIN",
+    intro:"Five calls on the lever that decides whether the work is worth doing — contribution margin.",
+    sub:"Resource mix · Pyramid · Right-shoring · Responsible FP · Change control" }
+];
+const segStart = SEG.map((_,si)=> QUESTIONS.findIndex(q=>q.seg===si));
+const segCount = SEG.map((_,si)=> QUESTIONS.filter(q=>q.seg===si).length);
+
+let idx = 0, margin = 100, answered = false;
+const HIT = 10; // margin cost per wrong answer
+
+const card = document.getElementById('card');
+
+function startGame(){
+  margin = 100; idx = 0;
+  showSegment(0);
+}
+
+function showSegment(segIdx){
+  const S = SEG[segIdx];
+  document.getElementById('statusBar').style.display = 'none';
+  const prior = segIdx>0
+    ? `<p class="drama">Round ${segIdx} banked — margin holding at <b style="color:${margin>=46?'var(--green)':margin>0?'var(--amber)':'var(--red)'}">${margin}%</b>. Now defend it.</p>`
+    : '';
+  card.innerHTML = `
+    <div class="screen">
+      <div class="eyebrow">ROUND ${segIdx+1} OF ${SEG.length}</div>
+      <h1 class="big" style="font-size:clamp(30px,5.5vw,54px)">${S.title}</h1>
+      <p class="lede">${S.intro}</p>
+      <p class="drama">${S.sub}</p>
+      ${prior}
+      <button class="start" onclick="beginSegment(${segIdx})">Begin Round ${segIdx+1} →</button>
+      <div class="hint">5 questions · press <b>A</b>–<b>D</b> to answer</div>
+    </div>`;
+}
+
+function beginSegment(segIdx){
+  idx = segStart[segIdx];
+  document.getElementById('statusBar').style.display = 'flex';
+  updateStatus();
+  renderQuestion();
+}
+
+function updateStatus(){
+  const cur = QUESTIONS[idx].seg;
+  document.getElementById('segLabel').textContent = SEG[cur].short;
+  document.getElementById('segTotal').textContent = segCount[cur];
+  document.getElementById('counter').textContent = (idx - segStart[cur] + 1);
+  const fill = document.getElementById('gaugeFill');
+  const val = document.getElementById('marginVal');
+  fill.style.width = margin + '%';
+  val.textContent = margin + '%';
+  let col = 'var(--green)';
+  if(margin <= 30){ col='var(--red)'; fill.style.background='linear-gradient(90deg,#FF5C5C,#FF8A8A)'; }
+  else if(margin <= 64){ col='var(--amber)'; fill.style.background='linear-gradient(90deg,#F4A93C,#FBC169)'; }
+  else { fill.style.background='linear-gradient(90deg,#3DD68C,#7BE3B6)'; }
+  val.style.color = col;
+}
+
+function renderQuestion(){
+  answered = false;
+  const Q = QUESTIONS[idx];
+  const letters = ['A','B','C','D'];
+  const lastOverall = idx===QUESTIONS.length-1;
+  const lastInSeg = !lastOverall && QUESTIONS[idx+1].seg!==Q.seg;
+  const nextLabel = lastOverall ? 'See your result →' : lastInSeg ? 'Finish the round →' : 'Next decision →';
+  card.innerHTML = `
+    <div class="eyebrow">${Q.eyebrow}<span class="rule"></span></div>
+    <h1 class="q">${Q.q}</h1>
+    <p class="sub">${Q.sub}</p>
+    <div class="options" id="opts">
+      ${Q.options.map((o,i)=>`
+        <button class="opt" data-i="${i}" onclick="answer(${i})">
+          <span class="key">${letters[i]}</span><span>${o.t}</span>
+        </button>`).join('')}
+    </div>
+    <div class="verdict" id="verdict">
+      <div class="tag" id="vtag"></div>
+      <p id="vtext"></p>
+      <div class="clearfix">
+        <button class="next" id="nextBtn" onclick="next()">${nextLabel}</button>
+      </div>
+    </div>`;
+}
+
+function answer(i){
+  if(answered) return;
+  answered = true;
+  const Q = QUESTIONS[idx];
+  const opts = [...document.querySelectorAll('.opt')];
+  const chosen = Q.options[i];
+
+  opts.forEach((el,j)=>{
+    el.disabled = true;
+    if(Q.options[j].correct) el.classList.add('correct');
+    else if(j===i) el.classList.add('wrong');
+    else el.classList.add('dim');
+  });
+
+  const verdict = document.getElementById('verdict');
+  const vtag = document.getElementById('vtag');
+  const vtext = document.getElementById('vtext');
+
+  if(chosen.correct){
+    vtag.className = 'tag good';
+    vtag.innerHTML = '✔ MARGIN HELD';
+    vtext.innerHTML = Q.good;
+  } else {
+    vtag.className = 'tag bad';
+    vtag.innerHTML = '✘ MARGIN HIT &nbsp;<span style="font-family:Space Mono,monospace;font-size:14px;color:var(--red)">−'+HIT+'%</span>';
+    vtext.innerHTML = Q.bad;
+    margin = Math.max(0, margin - HIT);
+    document.getElementById('statusBar').classList.add('shake');
+    setTimeout(()=>document.getElementById('statusBar').classList.remove('shake'),450);
+    updateStatus();
+  }
+  verdict.classList.add('show');
+  document.getElementById('nextBtn').focus();
+}
+
+function next(){
+  if(idx === QUESTIONS.length-1){ endGame(); return; }
+  if(QUESTIONS[idx+1].seg !== QUESTIONS[idx].seg){ showSegment(QUESTIONS[idx+1].seg); return; }
+  idx++;
+  updateStatus();
+  renderQuestion();
+}
+
+function endGame(){
+  const survived = margin > 0;
+  const grade = margin >= 82 ? 'Elite EM' : margin >= 46 ? 'You survived' : margin > 0 ? 'Barely standing' : 'Eliminated';
+  const verdictLine = survived
+    ? `You walked off the engagement with <b>${margin}% margin intact</b>. That's ${margin>=82?'textbook commercial instinct.':'a win — and room to sharpen.'}`
+    : `Your margin hit zero. The engagement survived; the P&L didn't. Run it back.`;
+  document.getElementById('statusBar').style.display = 'none';
+  card.innerHTML = `
+    <div class="screen">
+      <div class="eyebrow">SHIFT COMPLETE</div>
+      <div class="result-num" style="color:${margin>=46?'var(--green)':margin>0?'var(--amber)':'var(--red)'}">${margin}%</div>
+      <h1 class="big" style="font-size:clamp(28px,5vw,46px)">${grade}</h1>
+      <p class="lede">${verdictLine}</p>
+      <div class="takeaway">
+        <div class="k">The takeaway</div>
+        <div class="t">Good EMs don't just track — they make decisions that protect margin.</div>
+      </div>
+      <div style="margin-top:30px"><button class="start" onclick="startGame()" style="font-size:16px;padding:14px 34px">Run it again ↺</button></div>
+    </div>`;
+}
+
+// keyboard controls for live presenting
+document.addEventListener('keydown', e=>{
+  const k = e.key.toLowerCase();
+  if(document.getElementById('intro') && (k==='enter'||k===' ')){ startGame(); return; }
+  const idxMap = {a:0,'1':0,b:1,'2':1,c:2,'3':2,d:3,'4':3};
+  if(!answered && Object.prototype.hasOwnProperty.call(idxMap,k)){ const ti=idxMap[k]; const b=document.querySelector('.opt[data-i="'+ti+'"]'); if(b){ e.preventDefault(); answer(ti); } }
+  if(answered && (k==='enter'||k===' ')){ const n=document.getElementById('nextBtn'); if(n){e.preventDefault();next();} }
+});
+</script>
+</body>
+</html>
